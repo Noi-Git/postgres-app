@@ -5,16 +5,20 @@ const mustacheExpress = require('mustache-express');
 const bodyParser = require('body-parser'); //to parser request and get info out of body
 const pgp = require('pg-promise')(/*options*/);
 const bcrypt = require('bcrypt');
-const session = reauire('express-session');
+const session = require('express-session');
+const path = require('path');
 
 const PORT = 3000;
 const CONNECTION_STRING = "postgres://localhost:5432/newsdb";
 const saltRounds = 10;
 
+const VIEWS_PATH = path.join(__dirname, '/views')
+
 // config view engine
-app.engine('mustache', mustacheExpress());
-app.set('views', './views');
+// app.engine('mustache', mustacheExpress(VIEWS_PATH + '/partials', '.mustache'));
+app.engine('mustache', mustacheExpress(VIEWS_PATH + '/partials', '.mustache'));
 app.set('view engine', 'mustache') //set the file extention to .mustache
+app.set('views', VIEWS_PATH);
 
 
 // setup session
@@ -28,6 +32,11 @@ app.use(bodyParser.urlencoded({extended: false}))
 
 const db = pgp(CONNECTION_STRING)
 
+// create article page
+app.get('/users/articles', (req, res) => {
+  res.render('articles', {username: req.session.user.username})
+})
+
 app.post('/login', (req, res) => {
 
   let username = req.body.username
@@ -40,7 +49,15 @@ app.post('/login', (req, res) => {
       // compare password
       bcrypt.compare(password, user.password, function(error, result) {
         if(result) {
-          res.send("SUCCESS!")
+
+          // put username and userid in the session
+          if(req.session) {
+            req.session.user = {userId: user.userid, username: user.username}
+          }
+
+          // res.send("SUCCESS!")
+          res.redirect('/users/articles')
+
         } else {
           res.render('login', {message: "Invalid username or password!"})
         }
